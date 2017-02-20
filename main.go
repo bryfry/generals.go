@@ -1,80 +1,58 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"github.com/gorilla/websocket"
-	"log"
-	"time"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"os"
+	"os/signal"
 )
 
-type SocketIO struct {
-	*websocket.Conn
+var l *zap.SugaredLogger
+
+func init() {
+	conf := zap.NewDevelopmentConfig()
+	level := zap.NewAtomicLevel()
+	level.SetLevel(zapcore.InfoLevel)
+	conf.Level = level
+	conf.DisableStacktrace = true
+	logger, _ := conf.Build()
+	l = logger.Sugar()
 }
 
-func (s *SocketIO) Emit(msg ...interface{}) error {
-	w, err := s.NextWriter(websocket.TextMessage)
-	if err != nil {
-		return err
+func exitHandler() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	for _ = range c {
+		l.Warn("Caught SIGINT, Exiting")
+		return
 	}
-	_, err = w.Write([]byte("42"))
-	j := json.NewEncoder(w)
-	return j.Encode(msg)
-}
-func (s *SocketIO) Ping() error {
-	w, err := s.NextWriter(websocket.TextMessage)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write([]byte("2ping"))
-	return err
 }
 
 func main() {
-	generals_url := "ws://botws.generals.io/socket.io/?EIO=3&transport=websocket"
-	user_id := "k_00003"
-	username := "k_bot3"
+	user_id := "k_00004"
+	username := "[Bot]k_0004"
 
-	dialer := &websocket.Dialer{}
-	dialer.EnableCompression = false
+	var ai Bot
+	var g GeneralsIO
+	u := make(chan Update)
+	ai.Updates = u
+	g.Updates = u
+	g.Connect()
 
-	conn, _, err := dialer.Dial(generals_url, nil)
-	c := &SocketIO{conn}
+	err := g.Emit("set_username", user_id, username)
 	if err != nil {
-		log.Fatal(err)
+		l.Fatal(err)
 	}
-	err = c.Emit("set_username", user_id, username)
+	err = g.Emit("join_private", "test", user_id)
 	if err != nil {
-		log.Fatal(err)
+		l.Fatal(err)
 	}
-	err = c.Emit("join_private", "test", user_id)
+	err = g.Emit("set_force_start", "test", true)
 	if err != nil {
-		log.Fatal(err)
+		l.Fatal(err)
 	}
-	go func() {
-		for range time.Tick(5 * time.Second) {
-			c.Ping()
-		}
-	}()
-	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println("Got: ", string(message))
-		dec := json.NewDecoder(bytes.NewBuffer(message))
-		var msgType int
-		dec.Decode(&msgType)
-
-		if msgType == 42 {
-			var raw json.RawMessage
-			dec.Decode(&raw)
-			eventname := ""
-			data := []interface{}{&eventname}
-			json.Unmarshal(raw, &data)
-			//if f, ok := c.events[eventname]; ok {
-			//	f(raw)
-			//}
-		}
-	}
+	go g.Ping(5)
+	go g.RecievePackets() // Packets > Messages > Events
+	go ai.RecieveUpdates()
+	exitHandler()
 }
