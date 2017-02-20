@@ -53,9 +53,10 @@ type Game struct {
 	TeamChatID string   `json:"team_chat_room"`
 	Usernames  []string `json:"usernames"`
 	Teams      []int    `json:"teams"`
+	Map
 }
 
-func DecodeEvent(p []byte, updates chan<- Update) (err error) {
+func DecodeEvent(p []byte, updates chan<- Update, games chan<- Game) (err error) {
 	var (
 		m []json.RawMessage
 		t string
@@ -93,7 +94,6 @@ func DecodeEvent(p []byte, updates chan<- Update) (err error) {
 	case GENIO_CHAT:
 		var room string
 		var chat ChatMessage
-
 		err = json.Unmarshal(m[1], &room)
 		if err != nil {
 			l.Error(zap.String("type", t), zap.Error(err))
@@ -115,24 +115,23 @@ func DecodeEvent(p []byte, updates chan<- Update) (err error) {
 
 	case GENIO_START:
 		var game Game
-
 		err = json.Unmarshal(m[1], &game)
 		if err != nil {
 			l.Error(zap.String("type", t), zap.Error(err))
 			return err
 		}
-		l.Info("Game Start ", zap.Any("game", game))
+		games <- game
+		l.Debug("Game sent to AI", zap.Any("game", game))
 
 	case GENIO_UPDATE:
 		var u Update
-
 		err = json.Unmarshal(m[1], &u)
 		if err != nil {
 			l.Error(zap.String("type", t), zap.Error(err))
 			return err
 		}
 		updates <- u
-		l.Debug("Update sent to AI ")
+		l.Debug("Update sent to AI ", zap.Any("update", u))
 
 	case GENIO_WIN:
 		l.Info("Game Won")

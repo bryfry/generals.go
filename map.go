@@ -8,7 +8,7 @@ import (
 type Map struct {
 	Scores      []PlayerScore
 	Turn        int
-	AttackIndex int
+	AttackIndex int //TODO figure out what this is
 	Generals    []int
 	MapArray    []int
 	CitiesArray []int
@@ -37,12 +37,12 @@ const (
 )
 
 func (m *Map) Print() {
-	fmt.Println("TILES", m.Height, m.Width, m.Size)
+	fmt.Printf("Turn: %d\n", m.Turn)
 	for i := 0; i < m.Height; i++ {
-		fmt.Println()
 		for j := 0; j < m.Width; j++ {
 			m.Tiles[i][j].Print()
 		}
+		fmt.Println()
 	}
 	fmt.Println()
 }
@@ -51,6 +51,8 @@ func (m *Map) Patch(u Update) {
 	m.MapArray = patch(m.MapArray, u.MapDiff)
 	m.CitiesArray = patch(m.CitiesArray, u.CitiesDiff)
 	m.Generals = u.Generals
+	m.Turn = u.Turn
+	m.Scores = u.Scores
 	// Init
 	if m.Tiles == nil {
 		m.Width = m.MapArray[0]
@@ -60,10 +62,16 @@ func (m *Map) Patch(u Update) {
 		for i := 0; i < m.Height; i++ {
 			m.Tiles[i] = make([]Tile, m.Width)
 		}
+		// TODO - assign to each tile their neighbors / valid moves
 	}
 	// Apply patch to Map/Tiles
 	for i := 0; i < m.Height; i++ {
 		for j := 0; j < m.Width; j++ {
+			// can i skip this after init? updating map array should propigate to tiles?
+			// need to do *int instead?
+			// currently the append way of doing the patch messes up the underlying array / pointers
+			// patch would need rewritten to update the values (not create a new array)
+			// This is a performance upgrade for another day
 			m.Tiles[i][j].Armies = m.MapArray[(i*m.Width)+j+2]
 			m.Tiles[i][j].DecodeTerrain(m.MapArray[(i*m.Width)+j+2+m.Size])
 			for k := range m.Generals {

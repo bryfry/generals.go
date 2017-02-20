@@ -11,6 +11,7 @@ import (
 type GeneralsIO struct {
 	*websocket.Conn
 	Updates chan<- Update
+	Games   chan<- Game
 }
 
 const (
@@ -111,7 +112,7 @@ func (g *GeneralsIO) RecievePackets() {
 				l.Debug("Connected")
 			case SOCKETIO_EVENT:
 				// generals.go
-				err = DecodeEvent(p.Payload, g.Updates)
+				err = DecodeEvent(p.Payload, g.Updates, g.Games)
 				if err != nil {
 					l.Error("Unhandled Event", zap.String("packet", string(packet)), zap.Error(err))
 				}

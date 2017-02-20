@@ -34,9 +34,9 @@ func main() {
 
 	var ai Bot
 	var g GeneralsIO
-	u := make(chan Update)
-	ai.Updates = u
-	g.Updates = u
+	u, games := make(chan Update), make(chan Game)
+	ai.Updates, ai.Games = u, games
+	g.Updates, g.Games = u, games
 	g.Connect()
 
 	err := g.Emit("set_username", user_id, username)
