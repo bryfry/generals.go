@@ -109,10 +109,12 @@ func (t *Tile) DecodeTerrain(terrain int) {
 	switch terrain {
 	case GENIO_EMPTY:
 		t.Seen = true
+		t.Fog = false
 		t.Terrain = EMPTY
 		t.Owner = 0
 	case GENIO_MOUNTAIN:
 		t.Seen = true
+		t.Fog = false
 		t.Terrain = MOUNTAIN
 	case GENIO_FOG:
 		t.Fog = true
@@ -125,9 +127,10 @@ func (t *Tile) DecodeTerrain(terrain int) {
 			t.Terrain = OBSTACLE
 		}
 		t.Fog = true
-	default:
+	default: // player owned
 		t.Seen = true
-		t.Owner = terrain
+		t.Fog = false
+		t.Owner = terrain // Player index
 	}
 }
 

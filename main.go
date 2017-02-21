@@ -29,30 +29,35 @@ func exitHandler() {
 }
 
 func main() {
-	user_id := "k_00004"
-	username := "[Bot]k_0004"
 
-	var ai Bot
-	var g GeneralsIO
 	u, games := make(chan Update), make(chan Game)
-	ai.Updates, ai.Games = u, games
-	g.Updates, g.Games = u, games
-	g.Connect()
+	g := GeneralsIO{
+		Updates: u,
+		Games:   games,
+	}
+	ai := Bot{
+		UserID:     "k_00004",
+		Username:   "[Bot]k_0004",
+		Updates:    u,
+		Games:      games,
+		GeneralsIO: g,
+	}
+	ai.GeneralsIO.Connect()
 
-	err := g.Emit("set_username", user_id, username)
+	err := ai.GeneralsIO.Emit("set_username", ai.UserID, ai.Username)
 	if err != nil {
 		l.Fatal(err)
 	}
-	err = g.Emit("join_private", "test", user_id)
+	err = ai.GeneralsIO.Emit("join_private", "test", ai.UserID)
 	if err != nil {
 		l.Fatal(err)
 	}
-	err = g.Emit("set_force_start", "test", true)
+	err = ai.GeneralsIO.Emit("set_force_start", "test", true)
 	if err != nil {
 		l.Fatal(err)
 	}
-	go g.Ping(5)
-	go g.RecievePackets() // Packets > Messages > Events
+	go ai.GeneralsIO.Ping(5)
+	go ai.GeneralsIO.RecievePackets() // Packets > Messages > Events
 	go ai.RecieveUpdates()
 	exitHandler()
 }
